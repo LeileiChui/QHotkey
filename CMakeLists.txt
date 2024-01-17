@@ -1,10 +1,28 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.20)
 
 project(qhotkey
     VERSION 1.5.0
     DESCRIPTION "Global hotkey library for Qt software"
     HOMEPAGE_URL "https://skycoder42.github.io/QHotkey/"
     LANGUAGES CXX)
+# 递归添加 Framework 头文件
+function(INCLUDE_FRAMEWORK_REC ROOT_FRAMEWORK)
+    # 路径是目录，并且目录名字是以 .framework 结尾
+    if (IS_DIRECTORY ${ROOT_FRAMEWORK} AND ${ROOT_FRAMEWORK} MATCHES "\\.framework$")
+        message("include framework: " ${ROOT_FRAMEWORK})
+        include_directories(${ROOT_FRAMEWORK})
+    endif()
+    # 获得当前Framework目录下的所有子Framework的路径
+    file(GLOB CHILD_FRAMEWORKS RELATIVE ${ROOT_FRAMEWORK} ${ROOT_FRAMEWORK}/Frameworks/*)
+    foreach(FRAMEWORK ${CHILD_FRAMEWORKS})
+        if (IS_DIRECTORY ${ROOT_FRAMEWORK}/${FRAMEWORK})
+            # 对子目录递归调用，包含
+            INCLUDE_FRAMEWORK_REC(${ROOT_FRAMEWORK}/${FRAMEWORK})
+        endif()
+    endforeach()
+endfunction()
+
+INCLUDE_FRAMEWORK_REC(${CMAKE_OSX_SYSROOT}/System/Library)
 
 option(QHOTKEY_EXAMPLES "Build examples" OFF)
 option(QHOTKEY_INSTALL "Enable install rule" ON)
@@ -49,6 +67,8 @@ endif()
 if(APPLE)
     find_library(CARBON_LIBRARY Carbon)
     mark_as_advanced(CARBON_LIBRARY)
+
+#    INCLUDE_FRAMEWORK_REC(${CARBON_LIBRARY})
 
     target_sources(qhotkey PRIVATE QHotkey/qhotkey_mac.cpp)
     target_link_libraries(qhotkey PRIVATE ${CARBON_LIBRARY})
